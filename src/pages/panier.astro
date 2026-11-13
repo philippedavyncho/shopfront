@@ -1,0 +1,71 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatPrice } from '../lib/catalog';
+---
+<BaseLayout title="Votre panier — YATTE">
+  <section class="shell cart-page"><div class="breadcrumbs"><a href="/">Accueil</a><span>/</span><span>Votre panier</span></div><div class="cart-heading"><div><p class="eyebrow">VOTRE SÉLECTION</p><h1>De belles choses,<br /><em>bientôt chez vous.</em></h1></div><a href="/catalogue" class="text-link">Continuer les trouvailles <span>→</span></a></div>
+    <div class="cart-grid"><div class="cart-items-panel"><div class="cart-table-head"><span>Article</span><span>Prix</span><span>Quantité</span><span>Total</span></div><div data-cart-items></div><div class="cart-empty" data-cart-empty><span>♧</span><h2>Votre panier prend son temps.</h2><p>Peut-être qu'une belle trouvaille est juste à côté.</p><a class="button button-dark" href="/catalogue">Découvrir la boutique <span>↗</span></a></div></div>
+      <aside class="cart-summary"><p class="eyebrow">RÉCAPITULATIF</p><div class="summary-row"><span>Sous-total</span><strong data-cart-subtotal>0 F</strong></div><div class="summary-row"><span>Livraison</span><span>Calculée à l'étape suivante</span></div><div class="summary-total"><span>Total estimé</span><strong data-cart-total>0 F</strong></div><a href="/checkout" class="button button-dark checkout-button" data-checkout>Passer à la livraison <span>→</span></a><p class="secure-note">⌑ Paiement sécurisé · Retours simples sous 14 jours</p><div class="cart-help"><span>Besoin d'aide ?</span><a href="/contact">Nous sommes là pour vous →</a></div></aside></div>
+  </section>
+  <script>
+    import { formatPrice, getProduct, productImage } from '../lib/catalog';
+    import { getCart, readLocalCart, writeLocalCart } from '../lib/cart-client';
+    const key = 'maison-marche-cart';
+    const wrap = document.querySelector<HTMLElement>('[data-cart-items]');
+    const empty = document.querySelector<HTMLElement>('[data-cart-empty]');
+    const checkoutLink = document.querySelector<HTMLAnchorElement>('[data-checkout]');
+    const secureNote = document.querySelector<HTMLElement>('.secure-note');
+    let cartSource: 'remote' | 'local' = 'local';
+    async function render() {
+      if (!wrap) return;
+      const cart = await getCart(); cartSource = cart.source;
+      const items = cart.items;
+      if (cartSource === 'remote') localStorage.setItem(key, JSON.stringify(items));
+      wrap.innerHTML = items.map(item => `<article class="cart-row"><a class="cart-row-title" href="/produits/${encodeURIComponent(item.slug)}"><span class="cart-thumb">✳</span><span><strong>${escapeHtml(item.name)}</strong><small>Réf. ${escapeHtml(item.sku)}</small></span></a><span class="cart-row-price">${formatPrice(item.price)}</span><div class="quantity-control"><button type="button" data-quantity="-1" data-id="${item.variant}" aria-label="Réduire la quantité">−</button><span>${item.quantity}</span><button type="button" data-quantity="1" data-id="${item.variant}" aria-label="Augmenter la quantité">+</button></div><span class="cart-line-total">${formatPrice(item.price * item.quantity)}</span><button class="remove-item" type="button" data-remove="${item.variant}" aria-label="Supprimer ${escapeHtml(item.name)}">×</button></article>`).join('');
+      const resolvedItems = await Promise.all(items.map(async item => {
+        if (item.image) return item;
+        try {
+          const product = await getProduct(item.slug);
+          return { ...item, image: product ? productImage(product) : '' };
+        } catch { return item; }
+      }));
+      if (resolvedItems.some(item => item.image)) {
+        writeLocalCart(resolvedItems);
+        wrap.querySelectorAll<HTMLElement>('.cart-row').forEach((row, index) => {
+          const item = resolvedItems[index];
+          const thumb = row.querySelector<HTMLElement>('.cart-thumb');
+          if (thumb && item?.image) thumb.innerHTML = `<img src="${escapeHtml(item.image)}" alt="" />`;
+        });
+      }
+      if (empty) empty.hidden = items.length > 0;
+      if (checkoutLink) {
+        checkoutLink.href = items.length ? '/checkout' : '/catalogue';
+        checkoutLink.innerHTML = items.length ? 'Passer à la livraison <span>→</span>' : 'Découvrir le catalogue <span>→</span>';
+      }
+      if (secureNote) secureNote.hidden = !items.length;
+      const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      document.querySelectorAll<HTMLElement>('[data-cart-subtotal],[data-cart-total]').forEach(el => el.textContent = formatPrice(total));
+    }
+    function escapeHtml(value: string) { return value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] || char); }
+    wrap?.addEventListener('click', async event => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button'); if (!button) return;
+      const variant = Number(button.dataset.remove || button.dataset.id);
+      const items = readLocalCart();
+      const current = items.find(item => item.variant === variant);
+      if (!current) return;
+      const nextQuantity = current.quantity + Number(button.dataset.quantity || -current.quantity);
+      if (cartSource === 'remote') {
+        const response = nextQuantity < 1
+          ? await fetch(`/api/cart?variant_id=${variant}`, { method: 'DELETE' })
+          : await fetch('/api/cart', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variant_id: variant, quantity: nextQuantity }) });
+        if (!response.ok) { const error = await response.json().catch(() => ({})); const toast = document.querySelector<HTMLElement>('.toast'); if (toast) { toast.textContent = error.detail || 'Modification du panier impossible.'; toast.classList.add('toast-visible', 'toast-error'); setTimeout(() => toast.classList.remove('toast-visible', 'toast-error'), 2600); } return; }
+        const result = await response.json(); writeLocalCart(result.items.map((item: { variant: number; name: string; price: string; sku: string; slug: string; quantity: number; currency: string }) => ({ ...item, price: Number(item.price) })));
+      } else {
+        const updated = items.map(item => item.variant === variant ? { ...item, quantity: nextQuantity } : item).filter(item => item.quantity > 0);
+        writeLocalCart(updated);
+      }
+      await render();
+    });
+    window.addEventListener('storage', () => { void render(); }); void render();
+  </script>
+</BaseLayout>

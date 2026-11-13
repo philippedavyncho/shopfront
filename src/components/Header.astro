@@ -1,0 +1,80 @@
+---
+import { getCategories } from '../lib/catalog';
+const mainCategories = (await getCategories()).filter(category => category.parent === null);
+const currentPath = Astro.url.pathname;
+const currentCategory = Astro.url.searchParams.get('category');
+const isCatalogueActive = currentPath === '/catalogue' && !currentCategory;
+const menuIcons = {
+  catalogue: '<path d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v5H4zM14 15h6v5h-6z"/>',
+  mode: '<path d="M8 4 12 6l4-2 3 3-2 3v10H7V10L5 7zM9 5l3 3 3-3M7 10h10"/>',
+  sport: '<path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/><circle cx="12" cy="12" r="8.5"/>',
+  electronique: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 6h6M10 18h4"/>',
+  electromenager: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 8h14M8 5.5h.01M11 5.5h.01"/><circle cx="12" cy="14" r="3.5"/>',
+  promotions: '<path d="m20 13-7 7-10-10V3h7z"/><circle cx="7.5" cy="7.5" r="1"/><path d="m10 14 4-4m-3.5-.5h.01m3 5h.01"/>',
+};
+const menuIcon = (key: string) => menuIcons[key as keyof typeof menuIcons] || menuIcons.catalogue;
+---
+<header class="site-header">
+  <div class="announcement" aria-hidden="true" style="display:block;width:100%;height:32px;min-height:32px;padding:0;background:#000;border:0;border-radius:0!important;overflow:visible;box-shadow:none"></div>
+  <div class="header-main shell">
+    <button class="icon-button menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="mobile-menu"><span></span><span></span><span></span></button>
+    <a class="brand" href="/" aria-label="YATTE, accueil">YATTE</a>
+    <nav class="desktop-nav" aria-label="Navigation principale">
+      <a class:list={{ 'is-active': isCatalogueActive }} href="/catalogue" aria-current={isCatalogueActive ? 'page' : undefined}><svg aria-hidden="true" viewBox="0 0 24 24" set:html={menuIcon('catalogue')} />Tout le catalogue</a>{mainCategories.map(category => <a class:list={{ 'is-active': currentCategory === category.slug }} href={`/catalogue?category=${encodeURIComponent(category.slug)}`} aria-current={currentCategory === category.slug ? 'page' : undefined}><svg aria-hidden="true" viewBox="0 0 24 24" set:html={menuIcon(category.slug)} />{category.name}</a>)}<a class:list={{ 'nav-sale': true, 'is-active': currentPath === '/promotions' }} href="/promotions" aria-current={currentPath === '/promotions' ? 'page' : undefined}><svg aria-hidden="true" viewBox="0 0 24 24" set:html={menuIcon('promotions')} />Promotions</a>
+    </nav>
+    <form class="header-search" action="/catalogue" role="search"><label class="visually-hidden" for="search-header">Rechercher un article</label><input id="search-header" name="search" placeholder="Que recherchez-vous ?" /><button type="submit" aria-label="Rechercher">&#8981;</button></form>
+    <div class="header-actions"><a class="icon-button account-link" href="/connexion" aria-label="Mon compte"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.4-4 2.8-6.1 6.5-6.1s6.1 2.1 6.5 6.1"/></svg></a><a class="icon-button bag-link" href="/panier" aria-label="Mon panier"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 4h2l2.2 10.2a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 1.9-1.4L21 8H6"/><path d="M9 19.2h.01M18 19.2h.01"/><circle cx="9" cy="19" r="1.2"/><circle cx="18" cy="19" r="1.2"/></svg><b class="cart-count" data-cart-count>0</b></a></div>
+  </div>
+  <div class="menu-backdrop" data-menu-close hidden></div>
+  <nav class="mobile-menu" id="mobile-menu" aria-label="Menu mobile" hidden>
+    <div class="mobile-menu-head">
+      <span>Navigation</span>
+      <button class="mobile-menu-close" type="button" aria-label="Fermer le menu" data-menu-close>&times;</button>
+    </div>
+    <form class="mobile-search" action="/catalogue"><input name="search" placeholder="Rechercher un article" aria-label="Rechercher un article" /><button type="submit" aria-label="Rechercher">&#8981;</button></form>
+    <div class="mobile-menu-links">
+      <a class:list={{ 'is-active': isCatalogueActive }} href="/catalogue" aria-current={isCatalogueActive ? 'page' : undefined}><svg aria-hidden="true" viewBox="0 0 24 24" set:html={menuIcon('catalogue')} /><span>Voir toutes les catégories</span><b>&#8599;</b></a>{mainCategories.map(category => <a class:list={{ 'is-active': currentCategory === category.slug }} href={`/catalogue?category=${encodeURIComponent(category.slug)}`} aria-current={currentCategory === category.slug ? 'page' : undefined}><svg aria-hidden="true" viewBox="0 0 24 24" set:html={menuIcon(category.slug)} /><span>{category.name}</span><b>&#8599;</b></a>)}<a class:list={{ 'mobile-menu-sale': true, 'is-active': currentPath === '/promotions' }} href="/promotions" aria-current={currentPath === '/promotions' ? 'page' : undefined}><svg aria-hidden="true" viewBox="0 0 24 24" set:html={menuIcon('promotions')} /><span>Promotions</span><b>&#8599;</b></a>
+    </div>
+    <a class="mobile-menu-account" href="/connexion"><span>Mon espace</span><small>Connexion &amp; commandes &#8594;</small></a>
+  </nav>
+</header>
+<script>
+  const menuButton = document.querySelector<HTMLButtonElement>('.menu-toggle');
+  const mobileMenu = document.querySelector<HTMLElement>('#mobile-menu');
+  const menuBackdrop = document.querySelector<HTMLElement>('.menu-backdrop');
+  const setMenuState = (open: boolean) => {
+    if (!menuButton || !mobileMenu || !menuBackdrop) return;
+    menuButton.setAttribute('aria-expanded', String(open));
+    menuButton.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+    mobileMenu.hidden = !open;
+    menuBackdrop.hidden = !open;
+    document.body.classList.toggle('menu-open', open);
+    if (open) mobileMenu.querySelector<HTMLInputElement>('input')?.focus();
+  };
+  menuButton?.addEventListener('click', () => setMenuState(menuButton.getAttribute('aria-expanded') !== 'true'));
+  document.querySelectorAll<HTMLElement>('[data-menu-close], .mobile-menu a').forEach(element => element.addEventListener('click', () => setMenuState(false)));
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') setMenuState(false); });
+  function refreshCartCount() {
+    try {
+      const cart = JSON.parse(localStorage.getItem('maison-marche-cart') || '[]');
+      document.querySelectorAll<HTMLElement>('[data-cart-count]').forEach(el => el.textContent = String(cart.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0)));
+    } catch { /* cart storage unavailable */ }
+  }
+  refreshCartCount();
+  window.addEventListener('storage', refreshCartCount);
+  document.addEventListener('cart-updated', () => {
+    refreshCartCount();
+    const bag = document.querySelector<HTMLElement>('.bag-link');
+    if (!bag) return;
+    bag.classList.remove('cart-bounce');
+    void bag.offsetWidth;
+    bag.classList.add('cart-bounce');
+    window.setTimeout(() => bag.classList.remove('cart-bounce'), 650);
+  });
+</script>
+<style>
+  .desktop-nav a { display: inline-flex; align-items: center; gap: 6px; }
+  .desktop-nav svg { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .mobile-menu > a { align-items: center; justify-content: flex-start; gap: 11px; }
+  .mobile-menu > a svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: var(--olive); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+</style>

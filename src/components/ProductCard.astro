@@ -1,0 +1,25 @@
+---
+import type { Product } from '../lib/catalog';
+import { formatPrice, mediaUrl, price, productImage } from '../lib/catalog';
+const { product, index = 0, showGallery = false } = Astro.props as { product: Product; index?: number; showGallery?: boolean };
+const variant = product.variants?.[0];
+const compare = Number(variant?.compare_at_price ?? 0);
+const galleryImages = showGallery ? (product.images ?? []).filter(image => image?.image) : [];
+const imageUrl = (path: string) => path.startsWith('http') ? path : `${mediaUrl}${path}`;
+---
+<article class="product-card" style={`--card-index:${index}`}>
+  <div class="product-image-wrap">
+    <a class="product-image-link" href={`/produits/${product.slug}`} aria-label={`Découvrir ${product.name}`}>
+      {galleryImages.length > 1 ? <span class="product-image-gallery" style={`--gallery-count:${galleryImages.length - 1}`}>
+        <img class="product-image gallery-image-main" src={imageUrl(galleryImages[0].image)} alt={galleryImages[0].alt_text || product.name} loading="eager" />
+        <span class="gallery-image-stack">{galleryImages.slice(1).map((image, imageIndex) => <img class="product-image gallery-image-secondary" src={imageUrl(image.image)} alt={image.alt_text || `${product.name} — image ${imageIndex + 2}`} loading="eager" />)}</span>
+      </span> : <img class="product-image" src={productImage(product)} alt={product.images?.[0]?.alt_text || product.name} loading={showGallery || index <= 3 ? 'eager' : 'lazy'} />}
+    </a>
+    {compare > price(product) && <span class="product-badge">La belle offre</span>}
+    <button class="favorite-button" type="button" aria-label={`Ajouter ${product.name} aux favoris`} data-favorite={product.slug} data-name={product.name} data-price={variant?.price || '0'} data-image={productImage(product)} data-sku={variant?.sku || ''}>♡</button>
+    {variant && <button class="quick-add" type="button" data-add-cart data-variant={variant.id} data-name={product.name} data-price={variant.price} data-sku={variant.sku} data-slug={product.slug} data-image={productImage(product)}><span>+</span> Ajouter au panier</button>}
+  </div>
+  <div class="product-card-meta"><span class="product-category">{product.category_name || (typeof product.category === 'string' ? product.category : 'YATTE')}</span><span class="product-rating">✳ <span>{product.brand_name || 'YATTE'}</span></span></div>
+  <a href={`/produits/${product.slug}`} class="product-name">{product.name}</a>
+  <div class="product-price">{formatPrice(price(product), variant?.currency)} {compare > price(product) && <del>{formatPrice(compare, variant?.currency)}</del>}</div>
+</article>

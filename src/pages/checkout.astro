@@ -1,0 +1,84 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Livraison & paiement — YATTE">
+  <section class="shell checkout-page">
+    <div class="breadcrumbs"><a href="/">Accueil</a><span>/</span><a href="/panier">Votre panier</a><span>/</span><span>Livraison</span></div>
+    <div class="checkout-heading" data-checkout-heading><div><p class="eyebrow">DERNIÈRE LIGNE DROITE</p><h1>On vous le prépare<br /><em>avec soin.</em></h1></div><div class="checkout-steps"><span class="step-done">01 <small>Panier</small></span><i></i><span class="step-current">02 <small>Livraison</small></span><i></i><span>03 <small>Confirmation</small></span></div></div>
+    <div class="checkout-notice" data-checkout-notice><span>✳</span><div><strong>Votre sélection est bien au chaud.</strong><p>Le paiement est à la livraison. La commande sera créée après vérification du stock.</p></div></div>
+    <section class="checkout-empty" data-checkout-empty hidden><span aria-hidden="true">✳</span><p class="eyebrow">VOTRE SÉLECTION</p><h2>Votre panier est encore vide.</h2><p>Parcourez les univers YATTE et ajoutez vos trouvailles avant de poursuivre.</p><a class="button button-dark" href="/catalogue">Découvrir le catalogue <span>↗</span></a><a class="checkout-empty-back" href="/panier">Retourner au panier</a></section>
+    <div class="checkout-grid">
+      <section class="checkout-form-card"><p class="eyebrow">01 / VOS COORDONNÉES</p><h2>Où vous joindre ?</h2>
+        <form class="checkout-form" data-checkout-form>
+          <div class="form-two"><label>Prénom<input name="first_name" autocomplete="given-name" required /></label><label>Nom<input name="last_name" autocomplete="family-name" required /></label></div>
+          <label>E-mail<input name="email" type="email" autocomplete="email" required /></label><label>Téléphone<input name="phone" type="tel" autocomplete="tel" required /></label>
+          <div class="saved-address" data-saved-address-block hidden><label>Choisir une adresse déjà enregistrée<select data-saved-address><option value="">Ajouter une nouvelle adresse</option></select></label></div>
+          <div data-new-address><p class="eyebrow address-eyebrow">02 / VOTRE ADRESSE DE LIVRAISON</p><label>Adresse<input name="line1" autocomplete="street-address" required /></label><div class="form-two"><label>Ville<input name="city" autocomplete="address-level2" required /></label><label>Région<input name="region" autocomplete="address-level1" /></label></div><label>Complément <span class="optional">(facultatif)</span><textarea name="line2" rows="3" placeholder="Repère, étage, indications utiles…"></textarea></label><input type="hidden" name="country" value="SN" /></div>
+          <p class="eyebrow address-eyebrow">03 / VOTRE MODE DE PAIEMENT</p><div class="payment-option"><input class="payment-input" type="radio" name="payment_method" value="cod" checked required /><span><strong>Paiement à la livraison</strong><small>Le montant sera dû à la réception. Aucun paiement en ligne n'est effectué.</small></span><span>◎</span></div><div class="payment-option payment-muted"><input class="payment-input" type="radio" disabled /><span><strong>Mobile Money</strong><small>Wave & Orange Money seront activés après intégration fournisseur.</small></span><span>⌁</span></div>
+          <button type="submit" class="button button-dark place-order" data-place-order>Confirmer la commande <span>→</span></button><p class="checkout-action-message" aria-live="polite"></p>
+        </form>
+      </section>
+      <aside class="checkout-summary"><p class="eyebrow">VOTRE PANIER</p><div data-checkout-items></div><div class="summary-row"><span>Sous-total</span><strong data-checkout-subtotal>—</strong></div><div class="summary-row"><span>Livraison</span><span>À confirmer</span></div><div class="summary-total"><span>Total</span><strong data-checkout-total>—</strong></div><a href="/panier" class="text-link">Modifier mon panier <span>→</span></a></aside>
+    </div>
+  </section>
+  <script>
+    import { formatPrice } from '../lib/catalog';
+    import { getCart, writeLocalCart } from '../lib/cart-client';
+    const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] || char);
+    const authResponse = await fetch('/api/auth/me', { cache: 'no-store' }).catch(() => new Response(null, { status: 503 }));
+    const notice = document.querySelector<HTMLElement>('[data-checkout-notice]');
+    if (authResponse.status === 401 && notice) { notice.innerHTML = '<span>✳</span><div><strong>Connectez-vous pour finaliser votre commande.</strong><p><a href="/connexion?next=%2Fcheckout"><u>Se connecter ou créer un compte</u></a> · votre panier reste enregistré.</p></div>'; document.querySelector<HTMLFormElement>('[data-checkout-form]')!.hidden = true; }
+    if (!authResponse.ok && authResponse.status !== 401 && notice) { notice.innerHTML = '<span>✳</span><div><strong>Le service de compte est indisponible.</strong><p>Réessayez dans quelques instants. Votre panier reste enregistré.</p></div>'; document.querySelector<HTMLFormElement>('[data-checkout-form]')!.hidden = true; }
+    let addresses: { id: number; recipient_name: string; phone: string; line1: string; line2: string; city: string; region: string; country: string }[] = [];
+    if (authResponse.ok) {
+      const user = await authResponse.json();
+      const email = document.querySelector<HTMLInputElement>('[name="email"]'); if (email) email.value = user.email || '';
+      const response = await fetch('/api/addresses', { cache: 'no-store' });
+      if (response.ok) {
+        addresses = await response.json();
+        const block = document.querySelector<HTMLElement>('[data-saved-address-block]'); const select = document.querySelector<HTMLSelectElement>('[data-saved-address]');
+        if (addresses.length && block && select) { block.hidden = false; select.innerHTML += addresses.map(address => `<option value="${address.id}">${escapeHtml(address.recipient_name)} — ${escapeHtml(address.line1)}, ${escapeHtml(address.city)}</option>`).join(''); }
+      }
+    }
+    document.querySelector<HTMLSelectElement>('[data-saved-address]')?.addEventListener('change', event => {
+      const id = Number((event.target as HTMLSelectElement).value); const address = addresses.find(item => item.id === id); const form = document.querySelector<HTMLFormElement>('[data-checkout-form]');
+      const section = document.querySelector<HTMLElement>('[data-new-address]'); if (section) section.hidden = !!address;
+      section?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input:not([type="hidden"]), textarea').forEach(input => input.required = !address);
+      document.querySelectorAll<HTMLInputElement>('[name="first_name"], [name="last_name"]').forEach(input => input.required = !address);
+      section?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input:not([type="hidden"]), textarea').forEach(input => input.required = !address);
+      if (address && form) { const [first, ...rest] = address.recipient_name.split(' '); const values = { first_name: first, last_name: rest.join(' '), phone: address.phone, line1: address.line1, line2: address.line2, city: address.city, region: address.region, country: address.country }; for (const [field, value] of Object.entries(values)) { const input = form.elements.namedItem(field) as HTMLInputElement | HTMLTextAreaElement | null; if (input) input.value = value; } }
+    });
+    const cart = await getCart(); const items = cart.items; const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (!items.length) {
+      document.querySelector<HTMLElement>('[data-checkout-heading]')?.setAttribute('hidden', '');
+      document.querySelector<HTMLElement>('[data-checkout-notice]')?.setAttribute('hidden', '');
+      document.querySelector<HTMLElement>('.checkout-grid')?.setAttribute('hidden', '');
+      document.querySelector<HTMLElement>('[data-checkout-empty]')?.removeAttribute('hidden');
+    }
+    const list = document.querySelector<HTMLElement>('[data-checkout-items]');
+    if (list) list.innerHTML = items.length ? items.map(item => `<div class="checkout-item"><span>${item.quantity} × ${escapeHtml(item.name)}</span><strong>${formatPrice(item.price * item.quantity)}</strong></div>`).join('') : '<p>Votre panier est vide.</p>';
+    document.querySelectorAll<HTMLElement>('[data-checkout-subtotal],[data-checkout-total]').forEach(el => el.textContent = formatPrice(total));
+    const form = document.querySelector<HTMLFormElement>('[data-checkout-form]');
+    form?.addEventListener('submit', async event => {
+      event.preventDefault(); const message = form.querySelector<HTMLElement>('.checkout-action-message'); const button = form.querySelector<HTMLButtonElement>('[data-place-order]');
+      if (authResponse.status === 401) { window.location.assign('/connexion?next=%2Fcheckout'); return; }
+      if (!authResponse.ok) { if (message) message.textContent = 'Le service de compte est momentanément indisponible.'; if (button) button.disabled = false; return; }
+      if (!items.length) { if (message) message.textContent = 'Votre panier est vide.'; return; }
+      if (button) button.disabled = true; if (message) message.textContent = 'Vérification du stock et création de la commande…';
+      try {
+        const selected = Number(document.querySelector<HTMLSelectElement>('[data-saved-address]')?.value || 0);
+        let addressId = selected;
+        if (!addressId) {
+          const data = Object.fromEntries(new FormData(form).entries());
+          const address = await fetch('/api/addresses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label: 'Livraison', recipient_name: `${data.first_name} ${data.last_name}`.trim(), phone: data.phone, line1: data.line1, line2: data.line2 || '', city: data.city, region: data.region || '', country: data.country || 'SN' }) });
+          const addressData = await address.json(); if (!address.ok) throw new Error(Object.values(addressData).flat().join(' ')); addressId = addressData.id;
+        }
+        const response = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address_id: addressId, payment_method: 'cod' }) });
+        const result = await response.json(); if (!response.ok) throw new Error(result.detail || 'La commande n’a pas pu être créée.');
+        writeLocalCart([]);
+        if (message) { message.textContent = `Commande ${result.number} créée avec le statut « en attente ». Le montant sera dû à la livraison ; aucun paiement en ligne n’a été effectué.`; message.classList.add('success'); }
+        form.reset();
+      } catch (error) { if (message) message.textContent = error instanceof Error ? error.message : 'La commande n’a pas pu être créée.'; if (button) button.disabled = false; }
+    });
+  </script>
+</BaseLayout>

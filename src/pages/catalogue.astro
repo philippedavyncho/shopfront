@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProductCard from '../components/ProductCard.astro';
+import { getCategories, getProducts } from '../lib/catalog';
+const search = Astro.url.searchParams.get('search') || '';
+const category = Astro.url.searchParams.get('category') || '';
+const ordering = Astro.url.searchParams.get('ordering') || '-created_at';
+const products = await getProducts(search, { category, ordering });
+const categories = await getCategories();
+const title = search ? `Résultats pour « ${search} »` : 'Tout le catalogue';
+---
+<BaseLayout title={`${title} | YATTE`}>
+  <section class="catalogue-intro shell"><div class="breadcrumbs"><a href="/">Accueil</a><span>/</span><span>Catalogue</span></div><p class="eyebrow">TOUS LES UNIVERS YATTE</p><h1>{search ? <>Résultats pour<br /><em>« {search} ».</em></> : <>Tous vos articles,<br /><em>au même endroit.</em></>}</h1><p>Électronique, électroménager, mode, sport et articles du quotidien.</p></section>
+  <section class="catalogue-layout shell">
+    <aside class="catalogue-sidebar"><p class="filter-title">Catégories</p><a class:list={['filter-link', !category && 'active']} href="/catalogue">Tout voir <span>{products.length}</span></a>{categories.map(item => <a class:list={['filter-link', category === item.slug && 'active']} href={`/catalogue?category=${encodeURIComponent(item.slug)}`}>{item.name} <span>&#8599;</span></a>)}<a class="filter-link" href="/promotions">Promotions <span>&#8599;</span></a><div class="sidebar-note"><span>Y</span><p>YATTE rassemble les articles de vos univers favoris.</p></div></aside>
+    <div class="catalogue-results"><div class="results-toolbar"><span>{products.length} article{products.length === 1 ? '' : 's'}</span><form method="get"><input type="hidden" name="search" value={search} /><input type="hidden" name="category" value={category} /><label for="sort">Trier par</label><select id="sort" name="ordering" onchange="this.form.requestSubmit()"><option value="-created_at">Récents</option><option value="variants__price">Prix croissant</option><option value="-variants__price">Prix décroissant</option></select></form></div>
+      {products.length ? <div class="product-grid catalogue-grid">{products.map((product, index) => <ProductCard product={product} index={index} />)}</div> : <div class="empty-state"><span>&#8981;</span><h2>Aucun article trouve.</h2><p>Essayez une autre recherche ou parcourez nos categories.</p><a class="button button-dark" href="/catalogue">Voir tout le catalogue <span>&#8599;</span></a></div>}
+    </div>
+  </section>
+</BaseLayout>

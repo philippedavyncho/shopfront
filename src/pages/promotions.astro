@@ -1,0 +1,7 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProductCard from '../components/ProductCard.astro';
+import { getProducts } from '../lib/catalog';
+const products = (await getProducts()).filter(product => Number(product.variants?.[0]?.compare_at_price || 0) > Number(product.variants?.[0]?.price || 0));
+---
+<BaseLayout title="Les belles offres — YATTE"><section class="catalogue-intro shell"><p class="eyebrow">UNE BELLE OCCASION DE SE FAIRE PLAISIR</p><h1>Des pièces choisies,<br /><em>à prix doux.</em></h1><p>Les mêmes trouvailles, avec une petite attention en plus.</p></section><section class="shell catalogue-offers">{products.length ? <div class="product-grid">{products.map((product, index) => <ProductCard product={product} index={index} />)}</div> : <div class="empty-state"><span>✳</span><h2>Les prochaines offres se préparent.</h2><p>En attendant, explorez toute la sélection YATTE.</p><a class="button button-dark" href="/catalogue">Découvrir la boutique <span>↗</span></a></div>}</section></BaseLayout>

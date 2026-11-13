@@ -1,0 +1,159 @@
+<section class="commerce-film shell" data-commerce-film aria-label="YATTE, une boutique pour tous vos univers">
+  <div class="film-frame">
+    <div class="film-scenes">
+      <article class="film-scene is-active" data-film-scene aria-hidden="false">
+        <img src="/banners/electronique-cnr.png" alt="" fetchpriority="high" />
+        <div class="film-light"></div>
+        <div class="film-caption"><p>01 <i></i> TECHNOLOGIE</p><h2>Le futur<br /><em>à portée de main.</em></h2><a href="/catalogue?category=electronique">Explorer l’électronique <span>↗</span></a></div>
+      </article>
+      <article class="film-scene" data-film-scene aria-hidden="true">
+        <img src="/banners/electromenager.png" alt="" />
+        <div class="film-light"></div>
+        <div class="film-caption"><p>02 <i></i> MAISON</p><h2>Le confort<br /><em>prend sa place.</em></h2><a href="/catalogue?category=electromenager">Découvrir la maison <span>↗</span></a></div>
+      </article>
+      <article class="film-scene" data-film-scene aria-hidden="true">
+        <img src="/banners/mode.png" alt="" />
+        <div class="film-light"></div>
+        <div class="film-caption"><p>03 <i></i> STYLE</p><h2>Votre allure.<br /><em>Votre signature.</em></h2><a href="/catalogue?category=mode">Trouver votre style <span>↗</span></a></div>
+      </article>
+      <article class="film-scene" data-film-scene aria-hidden="true">
+        <img src="/banners/sport.png" alt="" />
+        <div class="film-light"></div>
+        <div class="film-caption"><p>04 <i></i> SPORT & MOUVEMENT</p><h2>Tout commence<br /><em>par un élan.</em></h2><a href="/catalogue?category=sport">Entrer dans le mouvement <span>↗</span></a></div>
+      </article>
+    </div>
+
+    <div class="film-grain" aria-hidden="true"></div>
+    <div class="film-letterbox film-letterbox-top" aria-hidden="true"></div>
+    <div class="film-letterbox film-letterbox-bottom" aria-hidden="true"></div>
+    <div class="film-topline"><span class="film-brand"><i>Y</i> YATTE</span><span>UNE BOUTIQUE · MILLE ENVIES</span><span>ÉDITION 2026</span></div>
+    <div class="film-bottomline">
+      <div class="film-chapters" aria-label="Choisir une scène">
+        <button class="is-active" type="button" data-film-go="0" aria-label="Scène 1 : technologie" aria-current="true"><span>01</span><i></i></button>
+        <button type="button" data-film-go="1" aria-label="Scène 2 : maison" aria-current="false"><span>02</span><i></i></button>
+        <button type="button" data-film-go="2" aria-label="Scène 3 : style" aria-current="false"><span>03</span><i></i></button>
+        <button type="button" data-film-go="3" aria-label="Scène 4 : sport" aria-current="false"><span>04</span><i></i></button>
+      </div>
+      <span class="film-runtime"><i></i> DES ENVIES À VIVRE</span>
+      <button class="film-pause" type="button" data-film-toggle aria-pressed="false"><span class="pause-symbol" aria-hidden="true">Ⅱ</span><span data-film-toggle-label>Pause</span></button>
+    </div>
+    <div class="film-progress" aria-hidden="true"><span data-film-progress></span></div>
+  </div>
+  <p class="film-footnote"><span>YATTE</span> Le bon article, dans le bon univers, au bon moment.</p>
+</section>
+
+<script>
+  const film = document.querySelector<HTMLElement>('[data-commerce-film]');
+  if (film) {
+    const scenes = [...film.querySelectorAll<HTMLElement>('[data-film-scene]')];
+    const chapters = [...film.querySelectorAll<HTMLButtonElement>('[data-film-go]')];
+    const toggle = film.querySelector<HTMLButtonElement>('[data-film-toggle]');
+    const toggleLabel = film.querySelector<HTMLElement>('[data-film-toggle-label]');
+    const progress = film.querySelector<HTMLElement>('[data-film-progress]');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const interval = 6800;
+    let current = 0;
+    let timer = 0;
+    let paused = reducedMotion.matches;
+    const showScene = (index: number) => {
+      current = (index + scenes.length) % scenes.length;
+      scenes.forEach((scene, i) => {
+        const active = i === current;
+        scene.classList.toggle('is-active', active);
+        scene.setAttribute('aria-hidden', String(!active));
+      });
+      chapters.forEach((chapter, i) => {
+        const active = i === current;
+        chapter.classList.toggle('is-active', active);
+        chapter.setAttribute('aria-current', String(active));
+      });
+      if (progress) {
+        progress.classList.remove('is-running');
+        void progress.offsetWidth;
+        if (!paused) progress.classList.add('is-running');
+      }
+    };
+    const stop = () => { window.clearInterval(timer); timer = 0; };
+    const start = () => {
+      stop();
+      if (paused || reducedMotion.matches) return;
+      if (progress) {
+        progress.classList.remove('is-running');
+        void progress.offsetWidth;
+        progress.classList.add('is-running');
+      }
+      timer = window.setInterval(() => showScene(current + 1), interval);
+    };
+    chapters.forEach((chapter, index) => chapter.addEventListener('click', () => { showScene(index); start(); }));
+    toggle?.addEventListener('click', () => {
+      paused = !paused;
+      toggle.setAttribute('aria-pressed', String(paused));
+      if (toggleLabel) toggleLabel.textContent = paused ? 'Lecture' : 'Pause';
+      film.classList.toggle('is-paused', paused);
+      if (paused) stop(); else start();
+    });
+    film.addEventListener('mouseenter', stop);
+    film.addEventListener('mouseleave', start);
+    film.addEventListener('focusin', stop);
+    film.addEventListener('focusout', start);
+    reducedMotion.addEventListener('change', () => { paused = reducedMotion.matches; film.classList.toggle('is-paused', paused); start(); });
+    if (paused) {
+      toggle?.setAttribute('aria-pressed', 'true');
+      if (toggleLabel) toggleLabel.textContent = 'Lecture';
+      film.classList.add('is-paused');
+    } else start();
+  }
+</script>
+
+<style>
+  .commerce-film{margin:22px auto 38px}
+  .film-frame{position:relative;isolation:isolate;aspect-ratio:1.9;min-height:420px;max-height:690px;overflow:hidden;background:#181b17;color:#fff;box-shadow:0 28px 70px #171a1425}
+  .film-scenes,.film-scene{position:absolute;inset:0}
+  .film-scene{visibility:hidden;opacity:0;transition:opacity 1.15s cubic-bezier(.22,1,.36,1),visibility 1.15s}
+  .film-scene.is-active{visibility:visible;opacity:1;z-index:1}
+  .film-scene>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;transform:scale(1.08);filter:saturate(.83) brightness(.72)}
+  .film-scene.is-active>img{animation:film-kenburns 7s cubic-bezier(.2,.6,.2,1) both}
+  .film-light{position:absolute;inset:0;background:linear-gradient(90deg,#10130fe8 0%,#10130fba 35%,#10130f38 70%,#10130f08 100%),linear-gradient(0deg,#10130f4a,transparent 45%)}
+  .film-caption{position:absolute;z-index:2;top:50%;left:clamp(28px,8.2vw,118px);width:min(53%,620px);transform:translateY(-43%)}
+  .film-caption>p{display:flex;align-items:center;gap:12px;margin:0 0 22px;color:#ded0ad;font-size:9px;font-weight:700;letter-spacing:.21em}
+  .film-caption>p i{width:29px;height:1px;background:#d4b77e}
+  .film-caption h2{margin:0;font:500 clamp(42px,6vw,82px)/.99 var(--display);letter-spacing:-.075em;text-wrap:balance}
+  .film-caption h2 em{color:#ddc695;font:500 1em/1.05 var(--serif);letter-spacing:-.05em}
+  .film-caption>a{display:inline-flex;align-items:center;gap:26px;margin-top:27px;padding-bottom:8px;border-bottom:1px solid #f3f0e78c;color:#f8f7f1;font-size:10px;font-weight:600;letter-spacing:.02em}
+  .film-caption>a span{color:#dfc48f;font-size:17px;transition:transform .25s}
+  .film-caption>a:hover span{transform:translate(3px,-3px)}
+  .film-scene.is-active .film-caption>*{animation:film-caption-in .8s cubic-bezier(.16,1,.3,1) both}
+  .film-scene.is-active .film-caption h2{animation-delay:.08s}
+  .film-scene.is-active .film-caption>a{animation-delay:.16s}
+  .film-grain{position:absolute;z-index:3;inset:0;pointer-events:none;opacity:.14;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.2'/%3E%3C/svg%3E");mix-blend-mode:soft-light}
+  .film-letterbox{position:absolute;z-index:4;right:0;left:0;height:14px;background:#11130f}
+  .film-letterbox-top{top:0}.film-letterbox-bottom{bottom:0}
+  .film-topline,.film-bottomline{position:absolute;z-index:5;right:clamp(20px,4vw,56px);left:clamp(20px,4vw,56px);display:flex;align-items:center;justify-content:space-between}
+  .film-topline{top:32px;color:#ffffffb5;font-size:7px;font-weight:600;letter-spacing:.19em}
+  .film-brand{display:flex;align-items:center;gap:8px;color:#fff;font:800 10px var(--display);letter-spacing:.15em}
+  .film-brand i{display:grid;width:19px;height:19px;place-items:center;background:#ddc695;color:#22251f;font:italic 13px var(--serif);clip-path:polygon(50% 0,93% 20%,100% 68%,70% 100%,22% 94%,0 48%,15% 13%)}
+  .film-bottomline{bottom:31px}
+  .film-chapters{display:flex;align-items:center;gap:17px}
+  .film-chapters button{display:flex;align-items:center;gap:7px;padding:5px 0;border:0;background:none;color:#ffffff85;font:600 8px var(--sans);cursor:pointer}
+  .film-chapters button i{width:17px;height:1px;background:#ffffff57;transition:width .35s,background .35s}
+  .film-chapters button.is-active{color:#fff}
+  .film-chapters button.is-active i{width:37px;background:#dfc48f}
+  .film-runtime{display:flex;align-items:center;gap:8px;margin-left:auto;margin-right:20px;color:#ffffffb0;font-size:7px;letter-spacing:.16em}
+  .film-runtime i{width:5px;height:5px;border-radius:50%;background:#d8c392;box-shadow:0 0 10px #d8c392;animation:film-live 2s ease-in-out infinite}
+  .film-pause{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #ffffff5e;background:#171a164f;color:white;font-size:8px;cursor:pointer;backdrop-filter:blur(8px);transition:background .2s,border-color .2s}
+  .film-pause:hover{border-color:#e3d1a5;background:#171a16a8}
+  .pause-symbol{font-size:11px;color:#e3d1a5}
+  .film-progress{position:absolute;z-index:6;right:0;bottom:0;left:0;height:2px;background:#ffffff35}
+  .film-progress span{display:block;width:0;height:100%;background:#e0c58f}
+  .film-progress span.is-running{animation:film-progress 6.8s linear both}
+  .commerce-film.is-paused .film-scene.is-active>img{animation-play-state:paused}
+  .film-footnote{display:flex;justify-content:space-between;gap:18px;margin:13px 2px 0;color:#7b7e74;font-size:9px}
+  .film-footnote span{color:var(--olive);font-size:8px;font-weight:800;letter-spacing:.12em}
+  @keyframes film-kenburns{from{transform:scale(1.08);filter:saturate(.78) brightness(.72)}to{transform:scale(1);filter:saturate(1) brightness(.82)}}
+  @keyframes film-caption-in{from{opacity:0;translate:0 20px;filter:blur(5px)}to{opacity:1;translate:0 0;filter:blur(0)}}
+  @keyframes film-progress{to{width:100%}}
+  @keyframes film-live{50%{opacity:.35;box-shadow:0 0 2px #d8c392}}
+  @media(max-width:760px){.commerce-film{margin:12px auto 30px}.film-frame{aspect-ratio:auto;min-height:520px}.film-scene>img{object-position:58% center}.film-light{background:linear-gradient(90deg,#10130fe8 0%,#10130fb5 52%,#10130f35 100%),linear-gradient(0deg,#10130f5c,transparent 60%)}.film-caption{top:47%;left:7%;width:78%}.film-caption h2{font-size:clamp(43px,9vw,68px)}.film-topline,.film-bottomline{right:20px;left:20px}.film-topline{top:29px;font-size:6px}.film-bottomline{bottom:28px}.film-runtime{display:none}.film-chapters{gap:10px}.film-chapters button i{width:10px}.film-chapters button.is-active i{width:25px}.film-footnote{font-size:8px}}
+  @media(max-width:480px){.film-frame{min-height:470px}.film-caption{top:47%;width:86%}.film-caption>p{margin-bottom:16px;font-size:8px}.film-caption h2{font-size:42px}.film-caption>a{margin-top:21px}.film-topline>span:nth-child(2){display:none}.film-chapters{gap:8px}.film-chapters button{gap:4px;font-size:7px}.film-chapters button i{width:7px}.film-chapters button.is-active i{width:19px}.film-pause{padding:7px 8px}}
+  @media(prefers-reduced-motion:reduce){.film-scene,.film-scene>img,.film-caption>*,.film-runtime i,.film-chapters button i,.film-progress span{animation:none!important;transition:none!important}.film-scene:first-child{visibility:visible;opacity:1}.film-scene:not(:first-child){visibility:hidden;opacity:0}.film-progress span{width:0!important}}
+</style>

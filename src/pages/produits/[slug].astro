@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AddToCart from '../../components/AddToCart.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { fallbackProducts, formatPrice, getProduct, getProducts, price, productImage } from '../../lib/catalog';
+const { slug } = Astro.params;
+const product = await getProduct(slug || '');
+if (!product) return Astro.redirect('/catalogue');
+const variant = product.variants?.[0];
+const compare = Number(variant?.compare_at_price || 0);
+const related = (await getProducts()).filter(item => item.slug !== product.slug).slice(0, 4);
+const structuredData = JSON.stringify({
+  '@context': 'https://schema.org', '@type': 'Product', name: product.name,
+  description: product.description, image: productImage(product), sku: variant?.sku,
+  offers: variant ? { '@type': 'Offer', priceCurrency: variant.currency, price: variant.price,
+    availability: variant.available > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url: `${Astro.url.origin}${Astro.url.pathname}` } : undefined,
+}).replace(/</g, '\\u003c');
+---
+<BaseLayout title={`${product.name} — YATTE`} description={product.description} image={productImage(product)}>
+  <script type="application/ld+json" set:html={structuredData} />
+  <div class="shell product-detail"><div class="breadcrumbs"><a href="/">Accueil</a><span>/</span><a href="/catalogue">La boutique</a><span>/</span><span>{product.name}</span></div>
+    <div class="product-detail-grid"><div class="product-gallery"><div class="product-main-image"><img src={productImage(product)} alt={product.images?.[0]?.alt_text || product.name} /></div><div class="product-gallery-caption"><span>01 / 01</span><span>Une belle trouvaille, choisie avec soin.</span><span>↗</span></div></div>
+      <div class="product-purchase"><p class="eyebrow">{product.category_name || (typeof product.category === 'string' ? product.category : 'YATTE')}{product.brand_name && <> · {product.brand_name}</>}</p><h1>{product.name}</h1><div class="detail-rating">✳ <span>Un choix apprécié de notre équipe</span></div><div class="detail-price">{formatPrice(price(product), variant?.currency)} {compare > price(product) && <del>{formatPrice(compare, variant?.currency)}</del>}</div><p class="detail-description">{product.description || 'Une belle pièce pour accompagner vos moments du quotidien. Choisie pour sa qualité, son usage et cette petite chose en plus.'}</p><div class="detail-option"><div><span>Choix</span><strong>{variant?.name || 'Standard'}</strong></div><button aria-label="Choisir une autre option" disabled>⌄</button></div><div class="detail-stock">{variant?.available === 0 ? 'Vérifier la disponibilité' : '✳ En stock, prêt à rejoindre votre quotidien'}</div>{variant && <AddToCart variantId={variant.id} name={product.name} price={variant.price} sku={variant.sku} slug={product.slug} image={productImage(product)} disabled={variant.available === 0} />}<p class="delivery-note">⌂ Livraison offerte à partir de 75 000 F<br /><span>Retour simple sous 14 jours</span></p><div class="detail-accordions"><details open><summary>À propos de cette pièce <span>＋</span></summary><p>{product.description || 'Pensée pour un usage quotidien et une longue vie à vos côtés.'}</p></details><details><summary>Livraison & retours <span>＋</span></summary><p>Livraison à domicile. Vous disposez de 14 jours après réception pour demander un retour.</p></details></div></div></div>
+  </div>
+  <section class="section related-section"><div class="shell"><div class="section-heading"><div><p class="eyebrow">DANS LE MÊME ESPRIT</p><h2>D'autres jolies <em>trouvailles.</em></h2></div><a href="/catalogue" class="text-link">Tout découvrir <span>→</span></a></div><div class="product-grid">{related.map((item, index) => <ProductCard product={item} index={index} />)}</div></div></section>
+</BaseLayout>

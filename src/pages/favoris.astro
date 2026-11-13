@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatPrice } from '../lib/catalog';
+---
+<BaseLayout title="Mes favoris — YATTE"><section class="shell favorites-page"><p class="eyebrow">VOS PETITS COUPS DE CŒUR</p><h1>À garder<br /><em>près de soi.</em></h1><p class="favorites-intro">Vos belles trouvailles, réunies au même endroit.</p><div class="favorites-grid" data-favorites-grid></div><div class="favorites-empty" data-favorites-empty><span>♡</span><h2>Un coup de cœur ? Gardez-le ici.</h2><p>Appuyez sur le cœur d'un article pour le retrouver plus tard.</p><a href="/catalogue" class="button button-dark">Explorer la sélection <span>↗</span></a></div></section>
+  <script>
+    import { formatPrice } from '../lib/catalog';
+    const key = 'maison-marche-favorites'; const grid = document.querySelector<HTMLElement>('[data-favorites-grid]'); const empty = document.querySelector<HTMLElement>('[data-favorites-empty]');
+    const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] || char);
+    function render() {
+      const items = JSON.parse(localStorage.getItem(key) || '[]') as { slug: string; name: string; price: number; image: string; sku: string }[];
+      if (grid) grid.innerHTML = items.map(item => `<article class="favorite-card"><a href="/produits/${encodeURIComponent(item.slug)}"><img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" loading="lazy" /></a><button type="button" aria-label="Retirer des favoris" data-unfavorite="${escapeHtml(item.slug)}">♥</button><a href="/produits/${encodeURIComponent(item.slug)}"><strong>${escapeHtml(item.name)}</strong></a><span>${formatPrice(item.price)}</span></article>`).join('');
+      if (empty) empty.hidden = items.length > 0;
+    }
+    grid?.addEventListener('click', event => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-unfavorite]'); if (!button) return; const items = JSON.parse(localStorage.getItem(key) || '[]').filter((item: { slug: string }) => item.slug !== button.dataset.unfavorite); localStorage.setItem(key, JSON.stringify(items)); render(); });
+    window.addEventListener('storage', render); render();
+  </script>
+</BaseLayout>

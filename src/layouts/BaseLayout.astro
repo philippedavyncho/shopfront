@@ -1,0 +1,131 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+const hasCartSession = Astro.cookies.has('mm_access') || Astro.cookies.has('mm_refresh');
+const { title = 'YATTE | Tous vos articles au même endroit', description = 'YATTE vous propose des articles pour la maison, la mode, le sport, la technologie et le quotidien.', image = 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=85' } = Astro.props;
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f8f7f3" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content={image} />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href={`${Astro.url.origin}${Astro.url.pathname}`} />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="preconnect" href="http://127.0.0.1:8000" />
+  </head>
+  <body data-cart-session={String(hasCartSession)}>
+    <a class="skip-link" href="#contenu">Aller au contenu</a>
+    <Header />
+    <main id="contenu"><slot /></main>
+    <Footer />
+    <nav class="mobile-dock" aria-label="Navigation rapide">
+      <a href="/" aria-label="Accueil"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10Z"/></svg></span><small>Accueil</small></a>
+      <a href="/catalogue" aria-label="Catalogue"><span aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg></span><small>Explorer</small></a>
+      <a href="/favoris" aria-label="Favoris"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.4 8.8c0 4.2-8.4 10.2-8.4 10.2S3.6 13 3.6 8.8A4.3 4.3 0 0 1 12 6.7a4.3 4.3 0 0 1 8.4 2.1Z"/></svg></span><small>Favoris</small></a>
+      <a href="/panier" aria-label="Panier"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 4h2l2.2 10.2a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 1.9-1.4L21 8H6"/><path d="M9 19.2h.01M18 19.2h.01"/><circle cx="9" cy="19" r="1.2"/><circle cx="18" cy="19" r="1.2"/></svg></span><small>Panier</small></a>
+    </nav>
+    <div class="toast" role="status" aria-live="polite"></div>
+    <script>
+      import { addCartItem, fromApiCart, writeLocalCart } from '../lib/cart-client';
+      const CART_KEY = 'maison-marche-cart';
+      document.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement;
+        const add = target.closest<HTMLButtonElement>('[data-add-cart]');
+        if (add) {
+          const item = { variant: Number(add.dataset.variant), name: add.dataset.name || 'Article', price: Number(add.dataset.price || 0), sku: add.dataset.sku || '', slug: add.dataset.slug || '', quantity: 1, image: add.dataset.image || '' };
+          addCartItem(item).then(result => {
+            const toast = document.querySelector<HTMLElement>('.toast');
+            if (toast) { toast.textContent = result.message; toast.classList.toggle('toast-error', !!result.error); toast.classList.add('toast-visible'); setTimeout(() => toast.classList.remove('toast-visible', 'toast-error'), 2600); }
+            if (!result.error) {
+              add.classList.remove('is-added');
+              void add.offsetWidth;
+              add.classList.add('is-added');
+              window.setTimeout(() => add.classList.remove('is-added'), 850);
+            }
+          });
+        }
+        const favorite = target.closest<HTMLButtonElement>('[data-favorite]');
+        if (favorite) {
+          const key = 'maison-marche-favorites';
+          try {
+            const favorites = JSON.parse(localStorage.getItem(key) || '[]') as { slug: string }[];
+            const existing = favorites.some(item => item.slug === favorite.dataset.favorite);
+            const next = existing ? favorites.filter(item => item.slug !== favorite.dataset.favorite) : [...favorites, { slug: favorite.dataset.favorite || '', name: favorite.dataset.name || '', price: Number(favorite.dataset.price || 0), image: favorite.dataset.image || '', sku: favorite.dataset.sku || '' }];
+            localStorage.setItem(key, JSON.stringify(next));
+            favorite.classList.toggle('is-favorite', !existing);
+            favorite.textContent = existing ? '♡' : '♥';
+            document.dispatchEvent(new Event('favorites-updated'));
+          } catch { /* storage unavailable */ }
+        }
+      });
+      document.querySelectorAll<HTMLButtonElement>('[data-favorite]').forEach(button => {
+        try { const favorites = JSON.parse(localStorage.getItem('maison-marche-favorites') || '[]'); const active = favorites.some((item: { slug: string }) => item.slug === button.dataset.favorite); button.classList.toggle('is-favorite', active); button.textContent = active ? '♥' : '♡'; } catch { /* storage unavailable */ }
+      });
+      if (document.body.dataset.cartSession === 'true') {
+        fetch('/api/cart', { cache: 'no-store' }).then(async response => {
+          if (response.ok) writeLocalCart(fromApiCart(await response.json()));
+        }).catch(() => { /* guest cart remains local */ });
+      }
+      document.querySelectorAll<HTMLFormElement>('.newsletter-form, .newsletter form').forEach(form => {
+        form.addEventListener('submit', event => {
+          event.preventDefault();
+          const note = form.querySelector<HTMLElement>('small') || form.parentElement?.querySelector<HTMLElement>('.newsletter-note');
+          if (note) note.textContent = 'Notre lettre arrive bientôt. L’inscription sera activée avant le lancement.';
+        });
+      });
+      // Reveal content as it enters view, while leaving it visible if motion is reduced.
+      const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+      if (!motionPreference.matches && 'IntersectionObserver' in window) {
+        const revealTargets = document.querySelectorAll<HTMLElement>(
+          '.promo-carousel, .trust-strip, .categories-section .section-heading, .category-tile, .featured-section .section-heading, .product-card, .editorial-image, .editorial-copy, .newsletter-band-inner, .catalogue-intro, .catalogue-sidebar, .results-toolbar, .catalogue-grid, .product-detail-grid, .breadcrumbs, .cart-heading, .cart-grid, .checkout-heading, .checkout-grid, .auth-shell, .simple-card, .category-directory, .favorites-grid, .account-grid, .orders-list'
+        );
+        revealTargets.forEach((element, index) => {
+          element.dataset.reveal = '';
+          if (element.matches('.category-tile, .product-card')) element.style.setProperty('--reveal-index', String(index % 8));
+        });
+        const revealObserver = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.setAttribute('data-revealed', '');
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -35px 0px' });
+        revealTargets.forEach(element => revealObserver.observe(element));
+      }
+      // Pointer parallax adds a little depth to large imagery on mouse devices.
+      if (!motionPreference.matches && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+        const parallaxItems = document.querySelectorAll<HTMLElement>('.promo-slide > img, .category-tile img, .editorial-mosaic img');
+        parallaxItems.forEach(image => {
+          const frame = image.closest<HTMLElement>('.promo-slide, .category-tile, .editorial-mosaic');
+          if (!frame) return;
+          let frameId = 0;
+          frame.addEventListener('pointermove', event => {
+            const bounds = frame.getBoundingClientRect();
+            const x = ((event.clientX - bounds.left) / bounds.width - .5) * 8;
+            const y = ((event.clientY - bounds.top) / bounds.height - .5) * 8;
+            cancelAnimationFrame(frameId);
+            frameId = requestAnimationFrame(() => {
+              image.style.setProperty('--parallax-x', `${x.toFixed(2)}px`);
+              image.style.setProperty('--parallax-y', `${y.toFixed(2)}px`);
+            });
+          });
+          frame.addEventListener('pointerleave', () => {
+            cancelAnimationFrame(frameId);
+            image.style.setProperty('--parallax-x', '0px');
+            image.style.setProperty('--parallax-y', '0px');
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

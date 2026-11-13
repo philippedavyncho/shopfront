@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Créer un compte — YATTE">
+  <section class="auth-shell"><div class="auth-image auth-register-image"><img src="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1100&q=85" alt="Matières et objets naturels dans un intérieur apaisant" /><div><span>LES BELLES CHOSES SE PARTAGENT</span><p>Un espace à vous,<br />pour vos découvertes.</p></div></div><div class="auth-panel"><a href="/" class="auth-back">← Retour à la boutique</a><p class="eyebrow">VOTRE ESPACE, TOUT SIMPLEMENT</p><h1>On fait<br /><em>connaissance ?</em></h1><p class="auth-intro">Créez votre compte pour retrouver vos envies et commandes en un clin d'œil.</p><form class="auth-form" data-auth-form="register"><div class="form-two"><label>Prénom<input name="first_name" autocomplete="given-name" required /></label><label>Nom<input name="last_name" autocomplete="family-name" required /></label></div><label>Adresse e-mail<input type="email" name="email" autocomplete="email" required placeholder="vous@exemple.com" /></label><label>Nom d'utilisateur<input name="username" autocomplete="username" required /></label><label>Mot de passe<input type="password" name="password" autocomplete="new-password" required minlength="10" placeholder="10 caractères minimum" /></label><button class="button button-dark auth-submit" type="submit">Créer mon compte <span>→</span></button><p class="form-message" aria-live="polite"></p><small>En créant votre compte, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.</small></form><div class="auth-divider"><span></span>Déjà client ?<span></span></div><a href="/connexion" class="text-link auth-sign-in">Se connecter <span>→</span></a></div></section>
+  <script>
+    import { syncGuestCart } from '../lib/cart-client';
+    const form = document.querySelector<HTMLFormElement>('[data-auth-form="register"]');
+    form?.addEventListener('submit', async event => {
+      event.preventDefault(); const button = form.querySelector<HTMLButtonElement>('button[type="submit"]'); const message = form.querySelector<HTMLElement>('.form-message');
+      if (button) button.disabled = true; if (message) message.textContent = 'Création en cours…';
+      const data = Object.fromEntries(new FormData(form).entries());
+      try {
+        const response = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(Object.values(result).flat().join(' '));
+        const login = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: data.email, password: data.password }) });
+        if (!login.ok) throw new Error('Compte créé. Connectez-vous pour continuer.');
+        await syncGuestCart();
+        if (message) { message.textContent = 'Votre compte est prêt. Redirection…'; message.classList.add('success'); }
+        const next = new URLSearchParams(window.location.search).get('next');
+        setTimeout(() => window.location.assign(next?.startsWith('/') && !next.startsWith('//') ? next : '/compte'), 700);
+      } catch (error) { if (message) message.textContent = error instanceof Error ? error.message : 'Inscription impossible.'; if (button) button.disabled = false; }
+    });
+  </script>
+</BaseLayout>

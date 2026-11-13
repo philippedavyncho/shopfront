@@ -1,0 +1,7 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Contact — YATTE">
+  <section class="shell site-copy"><p class="eyebrow">TOUJOURS UN PLAISIR D'ÉCHANGER</p><h1>On est là,<br /><em>tout simplement.</em></h1><p>Une question sur une pièce, une livraison ou votre commande ? Écrivez-nous et notre équipe vous répondra avec attention.</p><div class="contact-card"><form data-contact-form><label>Votre nom<input name="name" required autocomplete="name" /></label><label>Votre e-mail<input name="email" type="email" required autocomplete="email" /></label><label>Votre message<textarea name="message" rows="5" required></textarea></label><button class="button button-dark" type="submit">Envoyer mon message <span>→</span></button><p class="form-message" aria-live="polite"></p></form></div></section>
+  <script>document.querySelector<HTMLFormElement>('[data-contact-form]')?.addEventListener('submit', event => { event.preventDefault(); document.querySelector<HTMLElement>('.form-message')!.textContent = 'Le formulaire est prêt. Son envoi sera activé avec le service de contact avant la mise en ligne.'; });</script>
+</BaseLayout>

@@ -1,0 +1,7 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProductCard from '../components/ProductCard.astro';
+import { getProducts } from '../lib/catalog';
+const products = await getProducts();
+---
+<BaseLayout title="Nouveautés — YATTE"><section class="catalogue-intro shell"><p class="eyebrow">FRAÎCHEMENT REPÉRÉES</p><h1>Les nouvelles<br /><em>belles idées.</em></h1><p>Des pièces qui viennent de rejoindre notre sélection.</p></section><section class="shell catalogue-offers"><div class="product-grid">{products.map((product, index) => <ProductCard product={product} index={index} />)}</div></section></BaseLayout>

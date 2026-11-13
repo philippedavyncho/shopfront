@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Connexion — YATTE">
+  <section class="auth-shell"><div class="auth-image"><img src="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1100&q=85" alt="Un intérieur accueillant baigné de lumière" /><div><span>LA MAISON VOUS ATTEND</span><p>Vos trouvailles,<br />vos envies, votre espace.</p></div></div><div class="auth-panel"><a href="/" class="auth-back">← Retour à la boutique</a><p class="eyebrow">HEUREUX DE VOUS REVOIR</p><h1>Bienvenue<br /><em>chez vous.</em></h1><p class="auth-intro">Connectez-vous pour retrouver vos envies et suivre vos commandes.</p><form class="auth-form" data-auth-form="login"><label>Adresse e-mail<input type="email" name="email" autocomplete="email" required placeholder="vous@exemple.com" /></label><label>Mot de passe<input type="password" name="password" autocomplete="current-password" required minlength="8" placeholder="Votre mot de passe" /></label><button class="button button-dark auth-submit" type="submit">Me connecter <span>→</span></button><p class="form-message" aria-live="polite"></p></form><a class="forgot-link" href="/mot-de-passe-oublie">Mot de passe oublié ?</a><div class="auth-divider"><span></span>Pas encore de compte ?<span></span></div><a href="/inscription" class="button button-outline auth-create">Créer mon compte <span>↗</span></a></div></section>
+  <script>
+    import { syncGuestCart } from '../lib/cart-client';
+    const form = document.querySelector<HTMLFormElement>('[data-auth-form="login"]');
+    form?.addEventListener('submit', async event => {
+      event.preventDefault(); const button = form.querySelector<HTMLButtonElement>('button[type="submit"]'); const message = form.querySelector<HTMLElement>('.form-message');
+      if (button) button.disabled = true; if (message) message.textContent = 'Connexion en cours…';
+      const data = Object.fromEntries(new FormData(form).entries());
+      try {
+        const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'E-mail ou mot de passe incorrect.');
+        await syncGuestCart();
+        if (message) { message.textContent = 'Vous êtes connecté. Redirection…'; message.classList.add('success'); }
+        const next = new URLSearchParams(window.location.search).get('next');
+        window.location.assign(next?.startsWith('/') && !next.startsWith('//') ? next : '/compte');
+      } catch (error) { if (message) message.textContent = error instanceof Error ? error.message : 'Connexion impossible.'; if (button) button.disabled = false; }
+    });
+  </script>
+</BaseLayout>

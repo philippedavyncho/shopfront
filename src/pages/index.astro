@@ -1,0 +1,77 @@
+﻿---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProductCard from '../components/ProductCard.astro';
+import CommerceMotion from '../components/CommerceMotion.astro';
+import { getCategories, getProducts } from '../lib/catalog';
+const allProducts = await getProducts();
+const products = allProducts.slice(0, 8);
+const allCategories = await getCategories();
+const categories = allCategories.filter(category => category.parent === null);
+const featuredSubcategory = allCategories.find(category => category.slug === 'smartphones')
+  ?? allCategories.find(category => category.parent !== null);
+const homepageCategories = categories.length === 4 && featuredSubcategory ? [...categories, featuredSubcategory] : categories;
+const categoryUrl = (...slugs: string[]) => { const category = allCategories.find(item => slugs.includes(item.slug)); return category ? `/catalogue?category=${encodeURIComponent(category.slug)}` : '/catalogue'; };
+const banners = [
+  { label: 'TECHNOLOGIE', title: 'La technologie au quotidien', text: 'Des appareils innovants pour rester connecté et simplifier chaque journée.', href: categoryUrl('electronique'), image: '/banners/electronique.png', alt: 'Sélection moderne d’appareils électroniques', action: 'Explorer l’électronique' },
+  { label: 'MAISON', title: 'Le confort commence chez vous', text: 'Découvrez des appareils pratiques pour une maison plus simple et agréable.', href: categoryUrl('electromenager'), image: '/banners/electromenager.png', alt: 'Appareils électroménagers dans une présentation moderne', action: 'Voir l’électroménager' },
+  { label: 'NOUVELLE COLLECTION', title: 'Un style qui vous ressemble', text: 'Des essentiels faciles à porter pour accompagner toutes vos envies.', href: categoryUrl('mode'), image: '/banners/mode.png', alt: 'Tenue de mode dans des tons neutres', action: 'Découvrir la mode' },
+  { label: 'SÉLECTION ADIDAS', title: 'Avancez avec style', text: 'Des sneakers iconiques qui donnent du caractère à vos tenues.', href: categoryUrl('sport', 'mode'), image: '/banners/adidas.png', alt: 'Sneakers Adidas mises en scène en studio', action: 'Voir la sélection' },
+  { label: 'SÉLECTION NIKE', title: 'Affirmez votre allure', text: 'Des lignes classiques et un style affirmé pour vous accompagner partout.', href: categoryUrl('sport', 'mode'), image: '/banners/nike.png', alt: 'Sneaker Nike en noir et blanc photographiée en studio', action: 'Explorer les sneakers' },
+  { label: 'SPORT & MOUVEMENT', title: 'Prêt à bouger ?', text: 'Équipez vos prochaines sorties avec des chaussures pensées pour l’action.', href: categoryUrl('sport'), image: '/banners/sport.png', alt: 'Sneakers Adidas de running vert olive', action: 'Découvrir le sport' },
+  { label: 'STYLE DENIM', title: 'Le denim, tous les jours', text: 'Une pièce intemporelle pour composer un look décontracté et actuel.', href: categoryUrl('mode'), image: '/banners/denim.png', alt: 'Portrait mode avec une veste en denim', action: 'Trouver votre style' },
+  { label: 'ÉLÉGANCE', title: 'Le détail qui fait la différence', text: 'Découvrez des montres raffinées pour accompagner chaque moment.', href: categoryUrl('mode', 'accessoires'), image: '/banners/montres.png', alt: 'Montres élégantes présentées en studio', action: 'Voir les accessoires' },
+];
+const categoryImages: Record<string, string> = {
+  electromenager: '/banners/electromenager.png',
+  electronique: '/banners/electronique-cnr.png',
+  mode: '/banners/mode.png',
+  sport: '/banners/sport.png',
+  smartphones: '/banners/electronique.png',
+};
+const fallbackCategoryImages = ['photo-1524758631624-e2822e304c36', 'photo-1602143407151-7111542de6e8', 'photo-1490481651871-ab68de25d43d', 'photo-1517836357463-d25dfeac3438', 'photo-1511707171634-5f897ff02aa9'];
+---
+<BaseLayout title="YATTE | Tous vos articles au même endroit" description="Découvrez les articles YATTE : électronique, électroménager, mode, sport et bien plus.">
+  <section class="promo-carousel shell" data-promo-carousel aria-label="Bannieres YATTE" aria-roledescription="carrousel">
+    <div class="promo-slides">
+      {banners.map((banner, index) => <article class:list={['promo-slide', index === 0 && 'is-active', index === 6 && 'promo-slide-denim']} aria-roledescription="diapositive" aria-label={`${index + 1} sur ${banners.length}`} aria-hidden={index === 0 ? 'false' : 'true'}>
+        <img src={banner.image} alt={banner.alt} fetchpriority={index === 0 ? 'high' : 'auto'} loading={index === 0 ? 'eager' : 'lazy'} />
+        <div class="promo-shade"></div>
+        <div class="promo-copy"><p class="promo-eyebrow"><span></span>{banner.label}</p><h1>{banner.title}</h1><p class="promo-description">{banner.text}</p><a class="promo-cta" href={banner.href}>{banner.action || 'Explorer la categorie'} <span>&#8599;</span></a></div>
+      </article>)}
+    </div>
+    <div class="promo-controls"><div class="promo-dots" aria-label="Choisir une banniere">{banners.map((banner, index) => <button type="button" class:list={['promo-dot', index === 0 && 'is-active']} data-promo-go={index} aria-label={`Afficher la banniere ${index + 1}`} aria-current={index === 0 ? 'true' : 'false'}></button>)}</div><span class="promo-divider"></span><button type="button" class="promo-arrow" data-promo-prev aria-label="Banniere precedente">&#8592;</button><button type="button" class="promo-arrow" data-promo-next aria-label="Banniere suivante">&#8594;</button></div>
+  </section>
+  <script>
+    const carousel = document.querySelector<HTMLElement>('[data-promo-carousel]');
+    if (carousel) {
+      const slides = [...carousel.querySelectorAll<HTMLElement>('.promo-slide')];
+      const dots = [...carousel.querySelectorAll<HTMLButtonElement>('.promo-dot')];
+      let current = 0;
+      let timer = 0;
+      const show = (index: number) => {
+        current = (index + slides.length) % slides.length;
+        slides.forEach((slide, i) => { const active = i === current; slide.classList.toggle('is-active', active); slide.setAttribute('aria-hidden', String(!active)); });
+        dots.forEach((dot, i) => { const active = i === current; dot.classList.toggle('is-active', active); dot.setAttribute('aria-current', String(active)); });
+      };
+      const stop = () => { window.clearInterval(timer); };
+      const start = () => { stop(); if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) timer = window.setInterval(() => show(current + 1), 8000); };
+      carousel.querySelector('[data-promo-prev]')?.addEventListener('click', () => { show(current - 1); start(); });
+      carousel.querySelector('[data-promo-next]')?.addEventListener('click', () => { show(current + 1); start(); });
+      dots.forEach((dot, i) => dot.addEventListener('click', () => { show(i); start(); }));
+      carousel.addEventListener('mouseenter', stop);
+      carousel.addEventListener('mouseleave', start);
+      carousel.addEventListener('focusin', stop);
+      carousel.addEventListener('focusout', start);
+      start();
+    }
+  </script>
+  <section class="trust-strip"><div class="shell trust-inner"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3Z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/></svg>Un choix varié</span><span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>Des catégories pour tous</span><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 13-7 7-10-10V3h7l10 10Z"/><circle cx="7.5" cy="7.5" r="1"/><path d="m11 14 3-3"/></svg>Des offres régulières</span><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v11H3zM14 11h4l3 3v4h-7z"/><circle cx="7.5" cy="19" r="1.5"/><circle cx="17.5" cy="19" r="1.5"/></svg>Livraison à domicile</span></div></section>
+  <section class="section shell categories-section">
+    <div class="section-heading"><div><p class="eyebrow">TROUVEZ CE QU’IL VOUS FAUT</p><h2>Toutes nos <em>catégories.</em></h2></div><a class="text-link categories-all-link" href="/categories">Voir toutes les catégories <span>&#8594;</span></a></div>
+    <div class="category-grid">{homepageCategories.map((category, index) => <a class:list={['category-tile', index === 0 && 'category-large']} href={`/catalogue?category=${encodeURIComponent(category.slug)}`}><img src={categoryImages[category.slug] || `https://images.unsplash.com/${fallbackCategoryImages[index % fallbackCategoryImages.length]}?auto=format&fit=crop&w=1050&q=85`} alt={category.name} loading="lazy" /><span class="category-number">{String(index + 1).padStart(2, '0')} / {category.name.toLocaleUpperCase('fr')}</span><span class="category-label">{category.name} <b>&#8599;</b></span></a>)}</div>
+  </section>
+  <CommerceMotion />
+  <section class="section featured-section"><div class="shell"><div class="section-heading"><div><p class="eyebrow">À DÉCOUVRIR</p><h2>Les articles <em>du moment.</em></h2></div><a href="/catalogue" class="text-link">Voir tout le catalogue <span>&#8594;</span></a></div><div class="product-grid">{products.map((product, index) => <ProductCard product={product} index={index} showGallery />)}</div></div></section>
+  <section class="editorial shell"><div class="editorial-image editorial-mosaic" role="img" aria-label="Visuels YATTE : casque audio noir et or, montre connectée et électroménager"><div class="mosaic-main"><img src="/editorial/casque-premium.webp" alt="" loading="lazy" /></div><div class="mosaic-side"><div><img src="/editorial/montre-connectee.webp" alt="" loading="lazy" /></div><div><img src="/editorial/electromenager-premium.webp" alt="" loading="lazy" /></div></div><span>YATTE / TECHNOLOGIE · MAISON</span></div><div class="editorial-copy"><p class="eyebrow">VOTRE BOUTIQUE DU QUOTIDIEN</p><h2>Le bon article,<br /><em>au bon endroit.</em></h2><p>YATTE rassemble des articles de plusieurs univers pour vous aider a trouver facilement ce dont vous avez besoin.</p><a href="/a-propos" class="button button-outline">En savoir plus sur YATTE <span>&#8599;</span></a><span class="editorial-stamp">Y<br /><small>YATTE<br />POUR VOUS</small></span></div></section>
+  <section class="newsletter-band"><div class="shell newsletter-band-inner"><div><p class="eyebrow">LES NOUVEAUTÉS YATTE</p><h2>De nouvelles idées<br /><em>dans votre boîte.</em></h2></div><form class="newsletter-form"><label class="visually-hidden" for="email-home">Adresse e-mail</label><input id="email-home" type="email" placeholder="Votre adresse e-mail" required /><button type="submit">Je m’inscris <span>&#8594;</span></button><small>Recevez les nouvelles offres et les nouveaux articles.</small></form></div></section>
+</BaseLayout>
